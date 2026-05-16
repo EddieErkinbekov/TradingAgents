@@ -201,7 +201,7 @@ class _DashboardPage:
             "body-cell-ticker",
             """
             <q-td :props="props">
-                <span class="text-bold text-white">{{ props.row.ticker }}</span>
+                <span class="text-bold">{{ props.row.ticker }}</span>
             </q-td>
             """,
         )

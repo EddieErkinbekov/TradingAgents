@@ -293,7 +293,12 @@ def create_header(drawer_ref: ui.left_drawer) -> ui.label:
     """
     # Read persisted theme preference (default: dark)
     is_dark = db.get_setting("theme", "dark") != "light"
-    dark_mode = ui.dark_mode(is_dark)
+    # Apply initial theme via Quasar Dark plugin directly
+    ui.run_javascript(f"Quasar.Dark.set({str(is_dark).lower()})")
+
+    # Track state in a mutable container (closures can't rebind nonlocal
+    # across NiceGUI's per-client page instances).
+    theme_state = {"dark": is_dark}
 
     with ui.header().classes("items-center justify-between ta-header"):
         ui.button(icon="menu", on_click=lambda: drawer_ref.toggle()).props("flat color=white")
@@ -310,16 +315,22 @@ def create_header(drawer_ref: ui.left_drawer) -> ui.label:
         # Theme toggle button
         theme_btn = ui.button(
             icon="dark_mode" if is_dark else "light_mode",
-            on_click=lambda: _toggle_theme(dark_mode, theme_btn),
+            on_click=lambda: _toggle_theme(theme_state, theme_btn),
         ).props("flat round color=white size=sm").tooltip("Toggle dark/light mode")
 
         return running_label
 
 
-def _toggle_theme(dark_mode: ui.dark_mode, btn: ui.button) -> None:
-    """Toggle between dark and light mode, persisting the preference."""
-    new_dark = not dark_mode.value
-    dark_mode.set_value(new_dark)
+def _toggle_theme(state: dict, btn: ui.button) -> None:
+    """Toggle between dark and light mode, persisting the preference.
+
+    Uses Quasar.Dark.set() directly via JS to ensure the body class
+    toggles properly (body--dark ↔ body--light).  NiceGUI's
+    ui.dark_mode.set_value() doesn't reliably update Quasar's state.
+    """
+    new_dark = not state["dark"]
+    state["dark"] = new_dark
+    ui.run_javascript(f"Quasar.Dark.set({str(new_dark).lower()})")
     btn.props(f'icon={"dark_mode" if new_dark else "light_mode"}')
     db.set_setting("theme", "dark" if new_dark else "light")
 
